@@ -22,10 +22,7 @@
     "systems": [
       {
         "id": "flail",
-        "type": "system",
-        "manifest": "https://github.com/reubentaylor/flail-system/releases/latest/download/system.json"
-        
-        }
+        "type": "system"
       }
     ],
     "requires": [
