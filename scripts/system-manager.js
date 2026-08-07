@@ -1,6 +1,6 @@
 import { buildActionHandler } from "./action-handler.js";
 import { buildRollHandler }   from "./roll-handler.js";
-import { DEFAULTS }           from "./defaults.js";
+import { getDefaults } from "./defaults.js";
 
 /**
  * Factory for the SystemManager class.
@@ -42,7 +42,7 @@ export function buildSystemManager(coreModule) {
 
     /** Provide the default HUD layout to Core. */
     async registerDefaults() {
-      return DEFAULTS;
+      return getDefaults();
     }
   };
 }
