@@ -7,28 +7,15 @@ import { ACTION_TYPES, ATTRIBUTES, CLASSES, I18N } from "./constants.js";
  * at module-parse time, so we build ours inside the factory once Core
  * fires `tokenActionHudCoreApiReady`.
  *
- * The class we return overrides `buildSystemActions`, which is Core's
- * entry point for building the action tree per invocation. Core sets
- * `this.actor` and `this.token` before calling.
- *
- * Encoded value format: `<actionType>|<primaryId>|<secondaryId?>`
- * where `actionType` is one of ACTION_TYPES, `primaryId` is usually
- * an item/attribute id, and `secondaryId` is optional context (e.g.
- * a guild-action key when actionType is `sheetAction`).
- *
- * Handlers use two paths to reach FLAIL's mechanics:
- *   - Direct calls to `game.flail.rollAttack`, `game.flail.rollSave`,
- *     `game.flail.rollMorale` — the wrapper API exposed by the FLAIL
- *     system.
- *   - `game.flail.triggerSheetAction(actor, actionName, dataAttrs)`
- *     for sheet-registered actions.
+ * Tooltip content is populated per action from FLAIL's item data:
+ *   - Weapons show their Special Attack Feature.
+ *   - Spells/prayers/talents/gadgets/gifts show their description.
+ * Empty tooltip fields render the action's name only (falls back to
+ * TAH's default "nameOnly" behaviour). Users need to have TAH Core's
+ * `tooltips` setting on "full" for the extra text to appear.
  */
 export function buildActionHandler(coreModule) {
   return class FlailActionHandler extends coreModule.api.ActionHandler {
-    /**
-     * TAH Core entry point. Branch on actor.type; only single-actor
-     * mode is supported (multi-select falls back to per-actor HUDs).
-     */
     async buildSystemActions(groupIds) {
       const actor = this.actor;
       if (!actor) return;
@@ -42,17 +29,28 @@ export function buildActionHandler(coreModule) {
       }
     }
 
+    /**
+     * Wrap tooltip content in a TAH tooltip descriptor. Returns null
+     * (not undefined) if there's no useful content, so we can safely
+     * conditionally set it on the action object.
+     */
+    #makeTooltip(name, htmlContent) {
+      if (!htmlContent || htmlContent.trim() === "") return null;
+      return {
+        content: `<div class="tah-flail-tooltip"><h4>${name}</h4>${htmlContent}</div>`,
+        class: "tah-flail-tooltip-wrapper"
+      };
+    }
+
     // -----------------------------------------------------------------
     //  Character (PCs)
     // -----------------------------------------------------------------
 
     async #buildCharacterActions(actor, groupIds) {
-      // Tier 1 — universal
       this.#buildAttacks(actor);
       this.#buildSaves(actor);
       this.#buildOpenSheet(actor);
 
-      // Tier 2 — class-specific
       const classKey = actor.system?.class;
       if (!classKey) return;
 
@@ -68,33 +66,29 @@ export function buildActionHandler(coreModule) {
       }
     }
 
-    // ---- Tier 1 — Universal ----
-
-    /**
-     * Every equipped weapon becomes an attack button. Click fires the
-     * standard rollAttack pipeline (which handles TH pool, damage,
-     * chat card, etc.). Shift = advantage, Ctrl = disadvantage — the
-     * RollHandler reads modifier keys and passes them through.
-     */
     #buildAttacks(actor) {
       const weapons = actor.items.filter(i => i.type === "weapon");
       if (weapons.length === 0) return;
 
-      const actions = weapons.map(w => ({
-        id: `weapon_${w.id}`,
-        name: w.name,
-        encodedValue: [ACTION_TYPES.ATTACK, w.id].join("|"),
-        img: w.img,
-        info1: { text: `TH ${w.system?.th ?? "?"} / DMG ${w.system?.damage ?? "?"}` }
-      }));
+      const actions = weapons.map(w => {
+        const action = {
+          id: `weapon_${w.id}`,
+          name: w.name,
+          encodedValue: [ACTION_TYPES.ATTACK, w.id].join("|"),
+          img: w.img,
+          info1: { text: `TH ${w.system?.th ?? "?"} / DMG ${w.system?.damage ?? "?"}` }
+        };
+        // Weapon tooltip = the Special Attack Feature text (from the
+        // weapon sheet). Blank weapons fall through to the default
+        // name-only tooltip.
+        const tooltip = this.#makeTooltip(w.name, w.system?.specialFeature);
+        if (tooltip) action.tooltip = tooltip;
+        return action;
+      });
 
       this.addActions(actions, { id: "attacks", type: "system" });
     }
 
-    /**
-     * Five save buttons (STR/DEX/CHA/INT/LUCK). Each shows the current
-     * attribute score as info1 for quick reference.
-     */
     #buildSaves(actor) {
       const attrs = actor.system?.attributes ?? {};
       const actions = ATTRIBUTES.map(a => {
@@ -109,7 +103,6 @@ export function buildActionHandler(coreModule) {
       this.addActions(actions, { id: "saves", type: "system" });
     }
 
-    /** "Open Sheet" utility button — always present. */
     #buildOpenSheet(actor) {
       const actions = [{
         id: "openSheet",
@@ -119,50 +112,56 @@ export function buildActionHandler(coreModule) {
       this.addActions(actions, { id: "sheet", type: "system" });
     }
 
-    // ---- Tier 2 — Wizard ----
+    /**
+     * Generic item-list builder — factors out the repeated pattern of
+     * "map each item of type X to an action, attach description as
+     * tooltip, add to a subgroup." All class-item groups (spells,
+     * prayers, talents, gadgets, gifts) share this shape.
+     */
+    #addItemActionGroup(items, actionType, subgroupId) {
+      if (items.length === 0) return;
+      const actions = items.map(i => {
+        const action = {
+          id: `${actionType}_${i.id}`,
+          name: i.name,
+          encodedValue: [actionType, i.id].join("|"),
+          img: i.img
+        };
+        const tooltip = this.#makeTooltip(i.name, i.system?.description);
+        if (tooltip) action.tooltip = tooltip;
+        return action;
+      });
+      this.addActions(actions, { id: subgroupId, type: "system" });
+    }
 
     #buildWizardActions(actor) {
       const spells = actor.items.filter(i => i.type === "spell");
-      if (spells.length === 0) return;
-      const actions = spells.map(s => ({
-        id: `spell_${s.id}`,
-        name: s.name,
-        encodedValue: [ACTION_TYPES.CAST_SPELL, s.id].join("|"),
-        img: s.img
-      }));
-      this.addActions(actions, { id: "spells", type: "system" });
+      this.#addItemActionGroup(spells, ACTION_TYPES.CAST_SPELL, "spells");
     }
-
-    // ---- Tier 2 — Cleric ----
 
     #buildClericActions(actor) {
       const prayers = actor.items.filter(i => i.type === "prayer");
-      if (prayers.length === 0) return;
-      const actions = prayers.map(p => ({
-        id: `prayer_${p.id}`,
-        name: p.name,
-        encodedValue: [ACTION_TYPES.CAST_PRAYER, p.id].join("|"),
-        img: p.img
-      }));
-      this.addActions(actions, { id: "prayers", type: "system" });
+      this.#addItemActionGroup(prayers, ACTION_TYPES.CAST_PRAYER, "prayers");
     }
 
-    // ---- Tier 2 — Druid ----
-
     #buildDruidActions(actor) {
-      // Primal gifts (attribute-save gifts)
       const gifts = actor.items.filter(i => i.type === "gift");
       if (gifts.length > 0) {
-        const giftActions = gifts.map(g => ({
-          id: `gift_${g.id}`,
-          name: g.name,
-          encodedValue: [ACTION_TYPES.SHEET_ACTION, "useGift", g.id].join("|"),
-          img: g.img
-        }));
+        const giftActions = gifts.map(g => {
+          const action = {
+            id: `gift_${g.id}`,
+            name: g.name,
+            encodedValue: [ACTION_TYPES.SHEET_ACTION, "useGift", g.id].join("|"),
+            img: g.img
+          };
+          const tooltip = this.#makeTooltip(g.name, g.system?.description);
+          if (tooltip) action.tooltip = tooltip;
+          return action;
+        });
         this.addActions(giftActions, { id: "gifts", type: "system" });
       }
 
-      // Shapeshifting — one of three buttons depending on state.
+      // Shapeshifting — static labels, no per-item tooltips.
       const shifted = actor.system?.shapeshift?.active === true;
       const shapeshiftActions = shifted
         ? [
@@ -187,96 +186,61 @@ export function buildActionHandler(coreModule) {
       this.addActions(shapeshiftActions, { id: "shapeshift", type: "system" });
     }
 
-    // ---- Tier 2 — Cutthroat ----
-
     #buildCutthroatActions(actor) {
-      // Talents
       const talents = actor.items.filter(i => i.type === "talent");
-      if (talents.length > 0) {
-        const talentActions = talents.map(t => ({
-          id: `talent_${t.id}`,
-          name: t.name,
-          encodedValue: [ACTION_TYPES.USE_TALENT, t.id].join("|"),
-          img: t.img
-        }));
-        this.addActions(talentActions, { id: "talents", type: "system" });
-      }
+      this.#addItemActionGroup(talents, ACTION_TYPES.USE_TALENT, "talents");
 
-      // Guild — special actions from the equipped guild item.
+      // Guild special actions from the equipped guild item.
       const guild = actor.items.find(i => i.type === "guild");
       if (guild) {
         const items = guild.system?.actionItems ?? [];
         const legacy = guild.system?.specialActions ?? [];
-        // Prefer new-style item snapshots, fall back to legacy struct.
         const guildActions = items.length > 0
-          ? items.map((snap, idx) => ({
-              id: `guild_item_${idx}`,
-              name: snap.name ?? `Action ${idx + 1}`,
-              encodedValue: [ACTION_TYPES.SHEET_ACTION, "spendGuildAction", `item_${idx}`].join("|"),
-              img: snap.img
-            }))
-          : legacy.map(a => ({
-              id: `guild_${a.key}`,
-              name: a.name,
-              encodedValue: [ACTION_TYPES.SHEET_ACTION, "spendGuildAction", a.key].join("|")
-            }));
+          ? items.map((snap, idx) => {
+              const action = {
+                id: `guild_item_${idx}`,
+                name: snap.name ?? `Action ${idx + 1}`,
+                encodedValue: [ACTION_TYPES.SHEET_ACTION, "spendGuildAction", `item_${idx}`].join("|"),
+                img: snap.img
+              };
+              const tooltip = this.#makeTooltip(snap.name, snap.system?.description);
+              if (tooltip) action.tooltip = tooltip;
+              return action;
+            })
+          : legacy.map(a => {
+              const action = {
+                id: `guild_${a.key}`,
+                name: a.name,
+                encodedValue: [ACTION_TYPES.SHEET_ACTION, "spendGuildAction", a.key].join("|")
+              };
+              const tooltip = this.#makeTooltip(a.name, a.description);
+              if (tooltip) action.tooltip = tooltip;
+              return action;
+            });
         if (guildActions.length > 0) {
           this.addActions(guildActions, { id: "guild", type: "system" });
         }
       }
     }
 
-    // ---- Tier 2 — Bard ----
-
     #buildBardActions(actor) {
-      // Every talent, gadget, and spell embedded on a Bard's sheet is
-      // a Jack of All Trades pick — that's how they got there. No
-      // separate flag disambiguates them from other item types.
+      // Every talent/gadget/spell on a Bard's sheet is a JOAT pick.
       const joatItems = actor.items.filter(i =>
         i.type === "talent" || i.type === "gadget" || i.type === "spell"
       );
-      if (joatItems.length > 0) {
-        const joatActions = joatItems.map(i => ({
-          id: `joat_${i.id}`,
-          name: i.name,
-          encodedValue: [ACTION_TYPES.USE_JOAT, i.id].join("|"),
-          img: i.img
-        }));
-        this.addActions(joatActions, { id: "joat", type: "system" });
-      }
+      this.#addItemActionGroup(joatItems, ACTION_TYPES.USE_JOAT, "joat");
     }
-
-    // ---- Tier 2 — Tinkerer ----
 
     #buildTinkererActions(actor) {
       const gadgets = actor.items.filter(i => i.type === "gadget");
-      if (gadgets.length > 0) {
-        const gadgetActions = gadgets.map(g => ({
-          id: `gadget_${g.id}`,
-          name: g.name,
-          encodedValue: [ACTION_TYPES.USE_GADGET, g.id].join("|"),
-          img: g.img
-        }));
-        this.addActions(gadgetActions, { id: "gadgets", type: "system" });
-      }
+      this.#addItemActionGroup(gadgets, ACTION_TYPES.USE_GADGET, "gadgets");
     }
 
-    // ---- Tier 2 — Bone Whisperer ----
-
     #buildBoneWhispererActions(actor) {
-      // Dark spells (Bone Whisperer's spell type).
       const spells = actor.items.filter(i => i.type === "spell");
-      if (spells.length > 0) {
-        const spellActions = spells.map(s => ({
-          id: `spell_${s.id}`,
-          name: s.name,
-          encodedValue: [ACTION_TYPES.CAST_SPELL, s.id].join("|"),
-          img: s.img
-        }));
-        this.addActions(spellActions, { id: "spells", type: "system" });
-      }
+      this.#addItemActionGroup(spells, ACTION_TYPES.CAST_SPELL, "spells");
 
-      // Summon Undead Puppet — one-shot button.
+      // Summon Undead Puppet — static button, no per-item tooltip.
       const summonActions = [{
         id: "summonPuppet",
         name: game.i18n.localize(`${I18N}.actions.summonPuppet`),
@@ -285,23 +249,18 @@ export function buildActionHandler(coreModule) {
       this.addActions(summonActions, { id: "bonewhisperer", type: "system" });
     }
 
-    // ---- Tier 2 — Warrior ----
-
     #buildWarriorActions(_actor) {
-      // Warriors don't have a spell/prayer list — attacks + saves cover
-      // most of it. Placeholder for future features (Berserker rage etc.)
+      // Universal attacks/saves cover the Warrior; placeholder for
+      // any future class-specific features.
     }
 
     // -----------------------------------------------------------------
     //  NPC (minimal)
     // -----------------------------------------------------------------
 
- async #buildNpcActions(actor, _groupIds) {
+    async #buildNpcActions(actor, _groupIds) {
       this.#buildAttacks(actor);
 
-      // NPCs use a single Saves value (not per-attribute like PCs).
-      // Dispatch to the NPC sheet's own rollSave handler, which reads
-      // actor.system.saves directly.
       const saveActions = [{
         id: "save",
         name: game.i18n.localize(`${I18N}.actions.save`),
@@ -326,8 +285,6 @@ export function buildActionHandler(coreModule) {
     // -----------------------------------------------------------------
 
     async #buildConstructActions(actor, _groupIds) {
-      // v0.1 — constructs get "open sheet" only. Combat actions live
-      // on the Tinkerer's own HUD via the "call construct" button.
       this.#buildOpenSheet(actor);
     }
   };

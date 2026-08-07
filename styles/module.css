@@ -1,13 +1,50 @@
 /*
  * Token Action HUD FLAIL — module styles.
  *
- * TAH Core provides the main HUD styling; we only need overrides
- * for FLAIL-specific presentation. Currently minimal — future
- * additions could theme buttons in FLAIL parchment ochre to match
- * the system's aesthetic.
+ * Tooltip styling: TAH Core renders tooltip content inside a floating
+ * panel. Our actions inject a wrapper div with class "tah-flail-tooltip"
+ * carrying the item name as an h4 header + the description/special
+ * feature as HTML. Style it to match FLAIL's parchment aesthetic and
+ * keep it readable at typical popup widths.
  */
-
-/* Placeholder for future theming.
-   .tah-flail-attack-button { ... }
-   .tah-flail-spell-button  { ... }
-*/
+.tah-flail-tooltip {
+  font-family: "Signika", sans-serif;
+  color: #2b1e0a;
+  background: #f4ebd4;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #b58b3e;
+  border-radius: 3px;
+  max-width: 320px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.tah-flail-tooltip h4 {
+  margin: 0 0 0.35rem 0;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid #b58b3e;
+  color: #6a4d0e;
+  font-family: "Modesto Condensed", "Cinzel", "Signika", serif;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.tah-flail-tooltip p {
+  margin: 0.25rem 0;
+}
+.tah-flail-tooltip p:last-child {
+  margin-bottom: 0;
+}
+.tah-flail-tooltip em,
+.tah-flail-tooltip i {
+  color: #6a4d0e;
+}
+.tah-flail-tooltip strong,
+.tah-flail-tooltip b {
+  color: #4a3510;
+}
+.tah-flail-tooltip ul,
+.tah-flail-tooltip ol {
+  margin: 0.3rem 0;
+  padding-left: 1.3rem;
+}
