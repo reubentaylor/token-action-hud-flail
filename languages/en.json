@@ -28,6 +28,7 @@
     "actions": {
       "openSheet":         "Open Sheet",
       "morale":            "Morale Check",
+      "save":              "Save",
       "shapeshiftStart":   "Begin Shapeshift",
       "shapeshiftRoll":    "Roll Beast Round",
       "shapeshiftRevert":  "Revert Shape",

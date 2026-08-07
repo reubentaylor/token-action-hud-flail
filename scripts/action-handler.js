@@ -296,14 +296,24 @@ export function buildActionHandler(coreModule) {
     //  NPC (minimal)
     // -----------------------------------------------------------------
 
-    async #buildNpcActions(actor, _groupIds) {
+ async #buildNpcActions(actor, _groupIds) {
       this.#buildAttacks(actor);
-      this.#buildSaves(actor);
+
+      // NPCs use a single Saves value (not per-attribute like PCs).
+      // Dispatch to the NPC sheet's own rollSave handler, which reads
+      // actor.system.saves directly.
+      const saveActions = [{
+        id: "save",
+        name: game.i18n.localize(`${I18N}.actions.save`),
+        encodedValue: [ACTION_TYPES.SHEET_ACTION, "rollSave"].join("|"),
+        info1: { text: `${actor.system?.saves ?? "?"}` }
+      }];
+      this.addActions(saveActions, { id: "saves", type: "system" });
 
       const moraleActions = [{
         id: "morale",
         name: game.i18n.localize(`${I18N}.actions.morale`),
-        encodedValue: [ACTION_TYPES.MORALE].join("|"),
+        encodedValue: [ACTION_TYPES.SHEET_ACTION, "rollMorale"].join("|"),
         info1: { text: `${actor.system?.morale ?? "?"}` }
       }];
       this.addActions(moraleActions, { id: "morale", type: "system" });
