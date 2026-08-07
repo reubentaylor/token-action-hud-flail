@@ -1,0 +1,39 @@
+{
+  "tokenActionHudFlail": {
+    "groups": {
+      "combat":        "Combat",
+      "attacks":       "Attacks",
+      "saves":         "Saves",
+      "morale":        "Morale",
+      "class":         "Class",
+      "spells":        "Spells",
+      "prayers":       "Prayers",
+      "talents":       "Talents",
+      "gadgets":       "Gadgets",
+      "gifts":         "Primal Gifts",
+      "joat":          "Jack of All Trades",
+      "shapeshift":    "Shapeshift",
+      "guild":         "Guild Actions",
+      "bonewhisperer": "Bone Whisperer",
+      "utility":       "Utility",
+      "sheet":         "Sheet"
+    },
+    "attributes": {
+      "str":  "STR",
+      "dex":  "DEX",
+      "cha":  "CHA",
+      "int":  "INT",
+      "luck": "LUCK"
+    },
+    "actions": {
+      "openSheet":         "Open Sheet",
+      "morale":            "Morale Check",
+      "shapeshiftStart":   "Begin Shapeshift",
+      "shapeshiftRoll":    "Roll Beast Round",
+      "shapeshiftRevert":  "Revert Shape",
+      "summonPuppet":      "Summon Undead Puppet",
+      "callConstruct":     "Call Construct",
+      "witnessMe":         "Witness Me!"
+    }
+  }
+}

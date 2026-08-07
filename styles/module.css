@@ -1,0 +1,13 @@
+/*
+ * Token Action HUD FLAIL — module styles.
+ *
+ * TAH Core provides the main HUD styling; we only need overrides
+ * for FLAIL-specific presentation. Currently minimal — future
+ * additions could theme buttons in FLAIL parchment ochre to match
+ * the system's aesthetic.
+ */
+
+/* Placeholder for future theming.
+   .tah-flail-attack-button { ... }
+   .tah-flail-spell-button  { ... }
+*/
