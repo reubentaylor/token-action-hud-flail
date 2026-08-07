@@ -42,7 +42,7 @@ export function buildRollHandler(coreModule) {
 
       switch (type) {
         case ACTION_TYPES.ATTACK:
-          return this.#handleAttack(actor, primary, advantage);
+          return this.#handleAttack(actor, primary);
 
         case ACTION_TYPES.SAVE:
           return game.flail.rollSave(actor, primary, { advantage });
@@ -110,13 +110,27 @@ export function buildRollHandler(coreModule) {
      * to game.flail.rollAttack, which wraps actor.rollAttack. Advantage
      * flows through the options bag.
      */
-    async #handleAttack(actor, weaponId, advantage) {
+    async #handleAttack(actor, weaponId) {
       const weapon = actor.items.get(weaponId);
       if (!weapon) {
         ui.notifications?.warn(`Weapon ${weaponId} not found on ${actor.name}.`);
         return;
       }
-      return game.flail.rollAttack(actor, weapon, { advantage });
+      // Route through the sheet's own #onRollAttack handler so modifier
+      // keys (Alt = modifier dialog, Shift = advantage, Ctrl = disadvantage)
+      // produce identical behaviour to clicking the weapon on the sheet.
+      // The sheet handler reads event.altKey / shiftKey / ctrlKey; we
+      // forward them via the eventOptions bag on triggerSheetAction.
+      return game.flail.triggerSheetAction(
+        actor,
+        "rollAttack",
+        { itemId: weaponId },
+        {
+          altKey:   this.isAlt   ?? false,
+          shiftKey: this.isShift ?? false,
+          ctrlKey:  this.isCtrl  ?? false
+        }
+      );
     }
 
     /**
