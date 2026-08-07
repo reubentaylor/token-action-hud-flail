@@ -25,7 +25,7 @@
         "type": "system",
         "manifest": "https://github.com/reubentaylor/flail-system/releases/latest/download/system.json",
         
-        }
+        
       }
     ],
     "requires": [
