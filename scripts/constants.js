@@ -11,7 +11,7 @@ export const MODULE = {
 
 // TAH Core module version this system module targets. Uses Major.Minor
 // so we don't need to re-tag for every patch of TAH Core.
-export const REQUIRED_CORE_MODULE_VERSION = "2.0";
+export const REQUIRED_CORE_MODULE_VERSION = "2.1";
 
 // Prefix for i18n keys — everything in the languages file starts here.
 export const I18N = "tokenActionHudFlail";
