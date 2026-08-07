@@ -229,11 +229,12 @@ export function buildActionHandler(coreModule) {
     // ---- Tier 2 — Bard ----
 
     #buildBardActions(actor) {
-      // JOAT picks — talents, gadgets, or spells the bard has picked.
-      const joatItems = actor.items.filter(i => {
-        return (i.type === "talent" || i.type === "gadget" || i.type === "spell")
-          && i.getFlag?.("flail", "bardJoat");
-      });
+      // Every talent, gadget, and spell embedded on a Bard's sheet is
+      // a Jack of All Trades pick — that's how they got there. No
+      // separate flag disambiguates them from other item types.
+      const joatItems = actor.items.filter(i =>
+        i.type === "talent" || i.type === "gadget" || i.type === "spell"
+      );
       if (joatItems.length > 0) {
         const joatActions = joatItems.map(i => ({
           id: `joat_${i.id}`,
