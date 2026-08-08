@@ -25,10 +25,12 @@ export function buildActionHandler(coreModule) {
       }
     }
 
-    #makeTooltip(name, htmlContent) {
-      if (!htmlContent || htmlContent.trim() === "") return null;
-      return {
-        content: `<div class="tah-flail-tooltip"><h4>${name}</h4>${htmlContent}</div>`,
+    #makeTooltip(_name, _htmlContent) {
+      // No-op — TAH Core 2.1 crashes in getTooltip when tooltips=full,
+      // regardless of the tooltip payload shape (object or string).
+      // Attachment is disabled at source until TAH Core is patched.
+      return null;
+    }</div>`,
         class: "tah-flail-tooltip-wrapper"
       };
     }
@@ -69,8 +71,6 @@ export function buildActionHandler(coreModule) {
           img: w.img,
           info1: { text: `TH ${w.system?.th ?? "?"} / DMG ${w.system?.damage ?? "?"}` }
         };
-        const tooltip = this.#makeTooltip(w.name, w.system?.specialFeature);
-        if (tooltip) action.tooltip = tooltip;
         return action;
       });
 
@@ -114,8 +114,6 @@ export function buildActionHandler(coreModule) {
           encodedValue: [actionType, i.id].join("|"),
           img: i.img
         };
-        const tooltip = this.#makeTooltip(i.name, i.system?.description);
-        if (tooltip) action.tooltip = tooltip;
         return action;
       });
       this.addActions(actions, { id: subgroupId, type: "system" });
@@ -141,8 +139,6 @@ export function buildActionHandler(coreModule) {
             encodedValue: [ACTION_TYPES.SHEET_ACTION, "useGift", g.id].join("|"),
             img: g.img
           };
-          const tooltip = this.#makeTooltip(g.name, g.system?.description);
-          if (tooltip) action.tooltip = tooltip;
           return action;
         });
         this.addActions(giftActions, { id: "gifts", type: "system" });
@@ -188,8 +184,6 @@ export function buildActionHandler(coreModule) {
                 encodedValue: [ACTION_TYPES.SHEET_ACTION, "spendGuildAction", `item_${idx}`].join("|"),
                 img: snap.img
               };
-              const tooltip = this.#makeTooltip(snap.name, snap.system?.description);
-              if (tooltip) action.tooltip = tooltip;
               return action;
             })
           : legacy.map(a => {
@@ -198,8 +192,6 @@ export function buildActionHandler(coreModule) {
                 name: a.name,
                 encodedValue: [ACTION_TYPES.SHEET_ACTION, "spendGuildAction", a.key].join("|")
               };
-              const tooltip = this.#makeTooltip(a.name, a.description);
-              if (tooltip) action.tooltip = tooltip;
               return action;
             });
         if (guildActions.length > 0) {
