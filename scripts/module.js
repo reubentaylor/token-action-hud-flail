@@ -24,6 +24,41 @@ Hooks.once("tokenActionHudCoreApiReady", async (coreModule) => {
 });
 
 /**
+ * On the `init` hook, override the "displayCharacterName" and
+ * "displayCategories" TAH Core settings to hide empty groups by
+ * default. TAH Core doesn't expose a "show empty groups" toggle
+ * directly — its behaviour depends on how the ActionHandler flags
+ * groups. We flip the world-scope defaults so NPC HUDs don't render
+ * empty Class subgroups.
+ *
+ * Runs at Foundry `init` (before ready) so the setting is in place
+ * before TAH Core reads it for its own first render.
+ */
+Hooks.once("init", () => {
+  const CORE_ID = "token-action-hud-core";
+  // Whitelist of keys we try to flip. TAH Core's setting names have
+  // varied by version — check each and skip any that aren't registered.
+  const candidateKeys = [
+    "displayEmptyGroups",       // TAH Core 2.0+
+    "showEmptyGroups",          // possible alias
+    "displayEmptyCategories",   // legacy
+  ];
+  Hooks.once("ready", () => {
+    for (const key of candidateKeys) {
+      try {
+        const current = game.settings.get(CORE_ID, key);
+        if (current === true) {
+          game.settings.set(CORE_ID, key, false);
+          console.log(`TAH FLAIL: flipped ${CORE_ID}.${key} → false`);
+        }
+      } catch (_) {
+        // Setting doesn't exist under this key in this TAH Core version.
+      }
+    }
+  });
+});
+
+/**
  * Belt-and-braces guard: if TAH Core is missing or disabled at ready
  * time, surface a warning so the user knows why nothing's happening.
  */

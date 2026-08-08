@@ -3,16 +3,12 @@ import { ACTION_TYPES, ATTRIBUTES, CLASSES, I18N } from "./constants.js";
 /**
  * Factory for the ActionHandler class.
  *
- * Same pattern as SystemManager — Core's base class isn't available
- * at module-parse time, so we build ours inside the factory once Core
- * fires `tokenActionHudCoreApiReady`.
- *
  * Tooltip content is populated per action from FLAIL's item data:
  *   - Weapons show their Special Attack Feature.
- *   - Spells/prayers/talents/gadgets/gifts show their description.
- * Empty tooltip fields render the action's name only (falls back to
- * TAH's default "nameOnly" behaviour). Users need to have TAH Core's
- * `tooltips` setting on "full" for the extra text to appear.
+ *   - Spells/prayers/talents/gadgets/gifts/instruments show their description.
+ * Empty tooltip fields render the action's name only. Users need to
+ * have TAH Core's `tooltips` setting on "full" for the extra text to
+ * appear.
  */
 export function buildActionHandler(coreModule) {
   return class FlailActionHandler extends coreModule.api.ActionHandler {
@@ -29,11 +25,6 @@ export function buildActionHandler(coreModule) {
       }
     }
 
-    /**
-     * Wrap tooltip content in a TAH tooltip descriptor. Returns null
-     * (not undefined) if there's no useful content, so we can safely
-     * conditionally set it on the action object.
-     */
     #makeTooltip(name, htmlContent) {
       if (!htmlContent || htmlContent.trim() === "") return null;
       return {
@@ -78,9 +69,6 @@ export function buildActionHandler(coreModule) {
           img: w.img,
           info1: { text: `TH ${w.system?.th ?? "?"} / DMG ${w.system?.damage ?? "?"}` }
         };
-        // Weapon tooltip = the Special Attack Feature text (from the
-        // weapon sheet). Blank weapons fall through to the default
-        // name-only tooltip.
         const tooltip = this.#makeTooltip(w.name, w.system?.specialFeature);
         if (tooltip) action.tooltip = tooltip;
         return action;
@@ -115,8 +103,7 @@ export function buildActionHandler(coreModule) {
     /**
      * Generic item-list builder — factors out the repeated pattern of
      * "map each item of type X to an action, attach description as
-     * tooltip, add to a subgroup." All class-item groups (spells,
-     * prayers, talents, gadgets, gifts) share this shape.
+     * tooltip, add to a subgroup."
      */
     #addItemActionGroup(items, actionType, subgroupId) {
       if (items.length === 0) return;
@@ -161,7 +148,6 @@ export function buildActionHandler(coreModule) {
         this.addActions(giftActions, { id: "gifts", type: "system" });
       }
 
-      // Shapeshifting — static labels, no per-item tooltips.
       const shifted = actor.system?.shapeshift?.active === true;
       const shapeshiftActions = shifted
         ? [
@@ -190,7 +176,6 @@ export function buildActionHandler(coreModule) {
       const talents = actor.items.filter(i => i.type === "talent");
       this.#addItemActionGroup(talents, ACTION_TYPES.USE_TALENT, "talents");
 
-      // Guild special actions from the equipped guild item.
       const guild = actor.items.find(i => i.type === "guild");
       if (guild) {
         const items = guild.system?.actionItems ?? [];
@@ -224,11 +209,17 @@ export function buildActionHandler(coreModule) {
     }
 
     #buildBardActions(actor) {
-      // Every talent/gadget/spell on a Bard's sheet is a JOAT pick.
+      // JOAT picks — every talent/gadget/spell on a Bard's sheet.
       const joatItems = actor.items.filter(i =>
         i.type === "talent" || i.type === "gadget" || i.type === "spell"
       );
       this.#addItemActionGroup(joatItems, ACTION_TYPES.USE_JOAT, "joat");
+
+      // Musical instruments — separate group so they don't mix with
+      // JOAT picks. Each instrument's play action fires the sheet's
+      // rollInstrument handler which rolls the d10 effect table.
+      const instruments = actor.items.filter(i => i.type === "instrument");
+      this.#addItemActionGroup(instruments, ACTION_TYPES.USE_INSTRUMENT, "instruments");
     }
 
     #buildTinkererActions(actor) {
@@ -240,7 +231,6 @@ export function buildActionHandler(coreModule) {
       const spells = actor.items.filter(i => i.type === "spell");
       this.#addItemActionGroup(spells, ACTION_TYPES.CAST_SPELL, "spells");
 
-      // Summon Undead Puppet — static button, no per-item tooltip.
       const summonActions = [{
         id: "summonPuppet",
         name: game.i18n.localize(`${I18N}.actions.summonPuppet`),
@@ -250,8 +240,7 @@ export function buildActionHandler(coreModule) {
     }
 
     #buildWarriorActions(_actor) {
-      // Universal attacks/saves cover the Warrior; placeholder for
-      // any future class-specific features.
+      // Universal attacks/saves cover the Warrior.
     }
 
     // -----------------------------------------------------------------

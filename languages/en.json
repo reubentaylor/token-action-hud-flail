@@ -12,6 +12,7 @@
       "gadgets":       "Gadgets",
       "gifts":         "Primal Gifts",
       "joat":          "Jack of All Trades",
+      "instruments":   "Instruments",
       "shapeshift":    "Shapeshift",
       "guild":         "Guild Actions",
       "bonewhisperer": "Bone Whisperer",
@@ -27,8 +28,8 @@
     },
     "actions": {
       "openSheet":         "Open Sheet",
-      "morale":            "Morale Check",
       "save":              "Save",
+      "morale":            "Morale Check",
       "shapeshiftStart":   "Begin Shapeshift",
       "shapeshiftRoll":    "Roll Beast Round",
       "shapeshiftRevert":  "Revert Shape",
